@@ -16,6 +16,8 @@ venv/
 # Project-specific directories
 data/
 uploads/
+outputs/
+logs/
 
 # Specific Python files to ignore
 app_v1.py
