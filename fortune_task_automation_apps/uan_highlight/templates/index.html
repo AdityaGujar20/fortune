@@ -3,15 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UAN No. Highlighter</title>
+    <title>UAN and ESIC Highlighter</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
     <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl">
-        <h1 class="text-2xl font-bold mb-6 text-center">UAN No. Highlighter</h1>
+        <h1 id="page-title" class="text-2xl font-bold mb-6 text-center">UAN and ESIC Highlighter</h1>
+        
+        <!-- Highlight Type Selection -->
+        <div id="highlight-type-section">
+            <h2 class="text-lg font-semibold mb-4">Select Highlight Type</h2>
+            <div class="flex space-x-4">
+                <label class="flex items-center">
+                    <input type="radio" name="highlight_type" value="uan" class="mr-2" checked>
+                    UAN NO Highlight
+                </label>
+                <label class="flex items-center">
+                    <input type="radio" name="highlight_type" value="esic" class="mr-2">
+                    ESIC NO Highlight
+                </label>
+            </div>
+        </div>
         
         <!-- Upload Form -->
-        <div id="upload-section">
+        <div id="upload-section" class="mt-6">
             <form id="upload-form" enctype="multipart/form-data" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Excel File (.xlsx)</label>
@@ -27,10 +42,16 @@
         
         <!-- Column Selection -->
         <div id="column-selection" class="hidden space-y-4 mt-6">
-            <div>
+            <div id="uan-column-section">
                 <label class="block text-sm font-medium text-gray-700">UAN Column</label>
                 <select id="uan-column" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                     <option value="">Select UAN Column</option>
+                </select>
+            </div>
+            <div id="esic-column-section" class="hidden">
+                <label class="block text-sm font-medium text-gray-700">ESIC Column</label>
+                <select id="esic-column" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    <option value="">Select ESIC Column</option>
                 </select>
             </div>
             <div>
@@ -62,7 +83,10 @@
                 <label class="block text-sm font-medium text-gray-700">Opacity (0-1)</label>
                 <input type="number" id="opacity" min="0" max="1" step="0.01" value="0.25" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
             </div>
-            <button id="process-btn" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">Process Files</button>
+            <div class="flex space-x-4">
+                <button id="back-btn" class="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">Back</button>
+                <button id="process-btn" class="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">Process Files</button>
+            </div>
         </div>
         
         <!-- Progress Bar -->
@@ -92,6 +116,25 @@
 
     <script>
         let jobId = null;
+        let highlightType = 'uan'; // Default to UAN
+
+        // Handle highlight type selection
+        const highlightTypeRadios = document.getElementsByName('highlight_type');
+        highlightTypeRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                highlightType = e.target.value;
+                const uanSection = document.getElementById('uan-column-section');
+                const esicSection = document.getElementById('esic-column-section');
+                
+                if (highlightType === 'uan') {
+                    uanSection.classList.remove('hidden');
+                    esicSection.classList.add('hidden');
+                } else {
+                    uanSection.classList.add('hidden');
+                    esicSection.classList.remove('hidden');
+                }
+            });
+        });
 
         // Upload form submission
         document.getElementById('upload-form').addEventListener('submit', async (e) => {
@@ -108,10 +151,21 @@
             
             if (result.status === 'columns') {
                 document.getElementById('upload-section').classList.add('hidden');
+                document.getElementById('highlight-type-section').classList.add('hidden');
                 document.getElementById('column-selection').classList.remove('hidden');
                 
+                // Update the page title based on highlight type
+                const pageTitle = document.getElementById('page-title');
+                pageTitle.textContent = highlightType === 'uan' ? 'UAN Highlighter' : 'ESIC Highlighter';
+                
                 const uanSelect = document.getElementById('uan-column');
+                const esicSelect = document.getElementById('esic-column');
                 const siteSelect = document.getElementById('site-column');
+                
+                // Clear existing options except the default
+                uanSelect.innerHTML = '<option value="">Select UAN Column</option>';
+                esicSelect.innerHTML = '<option value="">Select ESIC Column</option>';
+                siteSelect.innerHTML = '<option value="">Select Site Column</option>';
                 
                 result.columns.forEach(col => {
                     const option1 = document.createElement('option');
@@ -122,23 +176,54 @@
                     const option2 = document.createElement('option');
                     option2.value = col;
                     option2.textContent = col;
-                    siteSelect.appendChild(option2);
+                    esicSelect.appendChild(option2);
+                    
+                    const option3 = document.createElement('option');
+                    option3.value = col;
+                    option3.textContent = col;
+                    siteSelect.appendChild(option3);
                 });
             } else {
                 showError(result.message);
             }
         });
 
+        // Back button
+        document.getElementById('back-btn').addEventListener('click', async () => {
+            if (jobId) {
+                await fetch(`/cleanup/${jobId}`);
+            }
+            document.getElementById('column-selection').classList.add('hidden');
+            document.getElementById('highlight-type-section').classList.remove('hidden');
+            document.getElementById('upload-section').classList.remove('hidden');
+            // Reset the page title
+            document.getElementById('page-title').textContent = 'UAN and ESIC Highlighter';
+            // Reset form inputs
+            document.getElementById('upload-form').reset();
+            jobId = null;
+        });
+
         // Process button
         document.getElementById('process-btn').addEventListener('click', async () => {
             const uanColumn = document.getElementById('uan-column').value;
+            const esicColumn = document.getElementById('esic-column').value;
             const siteColumn = document.getElementById('site-column').value;
             const highlightMode = document.getElementById('highlight-mode').value;
             const color = document.getElementById('color').value;
             const opacity = document.getElementById('opacity').value;
             
-            if (!uanColumn || !siteColumn) {
-                showError('Please select both UAN and Site columns');
+            if (!siteColumn) {
+                showError('Please select the Site column');
+                return;
+            }
+            
+            if (highlightType === 'uan' && !uanColumn) {
+                showError('Please select the UAN column');
+                return;
+            }
+            
+            if (highlightType === 'esic' && !esicColumn) {
+                showError('Please select the ESIC column');
                 return;
             }
             
@@ -150,7 +235,9 @@
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
                     job_id: jobId,
+                    highlight_type: highlightType,
                     uan_column: uanColumn,
+                    esic_column: esicColumn,
                     site_column: siteColumn,
                     highlight_mode: highlightMode,
                     color: color,

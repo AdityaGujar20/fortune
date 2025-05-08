@@ -15,7 +15,7 @@ app = Flask(__name__)
 
 # Configure upload folder and allowed extensions
 UPLOAD_FOLDER = 'uploads'
-OUTPUT_FOLDER = 'outputs'
+OUTPUT_FOLDER = 'Outputs'
 LOG_FOLDER = 'logs'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
@@ -49,7 +49,9 @@ def highlight_uans_by_site(
     excel_path,
     pdf_path,
     output_dir,
+    highlight_type,
     uan_column,
+    esic_column,
     site_column,
     expand_left=1,
     expand_right=1,
@@ -70,27 +72,51 @@ def highlight_uans_by_site(
     
     try:
         df = pd.read_excel(excel_path)
-        if uan_column not in df.columns or site_column not in df.columns:
-            logger.error(f"Required columns not found: {uan_column}, {site_column}")
+        # Determine the column to highlight based on highlight_type
+        target_column = uan_column if highlight_type == 'uan' else esic_column
+        required_columns = [target_column, site_column]
+        
+        for col in required_columns:
+            if col not in df.columns:
+                logger.error(f"Required column not found: {col}")
+                job_status[job_id] = 'error'
+                return False
+        
+        # Clean the data for the target column and filter rows
+        df[target_column] = df[target_column].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+        
+        # Filter out empty cells, cells with "0", and invalid digit lengths
+        expected_length = 12 if highlight_type == 'uan' else 10
+        df = df[
+            (df[target_column].notna()) &  # Not empty
+            (df[target_column] != '0') &   # Not "0"
+            (df[target_column] != 'nan') & # Not "nan"
+            (df[target_column].str.match(r'^\d+$')) &  # Only digits
+            (df[target_column].str.len() == expected_length)  # Correct length
+        ]
+        
+        if df.empty:
+            logger.error("No valid data after filtering the target column")
             job_status[job_id] = 'error'
             return False
         
-        df[uan_column] = df[uan_column].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
         sites = df[site_column].dropna().unique()
         total_sites = len(sites)
         job_progress[job_id] = 0
         
         for idx, site in enumerate(sites):
             site_df = df[df[site_column] == site]
-            uan_dict = {}
-            for _, row in site_df.iterrows():
-                uan = str(row[uan_column]).strip()
-                if not uan or uan == "nan":
-                    continue
-                clean_uan = uan.replace(" ", "")
-                uan_dict[clean_uan] = "regular"
+            number_dict = {}
             
-            if not uan_dict:
+            # Process numbers from the target column
+            for _, row in site_df.iterrows():
+                number = str(row[target_column]).strip()
+                if not number or number == "nan":
+                    continue
+                clean_number = number.replace(" ", "")
+                number_dict[clean_number] = "regular"
+            
+            if not number_dict:
                 continue
             
             safe_site_name = ''.join(c if c.isalnum() else '_' for c in str(site))
@@ -99,7 +125,7 @@ def highlight_uans_by_site(
             success = process_pdf_for_site(
                 pdf_path=pdf_path,
                 output_path=output_path,
-                uan_dict=uan_dict,
+                number_dict=number_dict,
                 site_name=site,
                 expand_left=expand_left,
                 expand_right=expand_right,
@@ -126,7 +152,7 @@ def highlight_uans_by_site(
 def process_pdf_for_site(
     pdf_path,
     output_path,
-    uan_dict,
+    number_dict,
     site_name,
     expand_left,
     expand_right,
@@ -146,10 +172,10 @@ def process_pdf_for_site(
         
         for page_num, page in enumerate(doc):
             page_matches = 0
-            for uan, highlight_type in uan_dict.items():
-                if not uan:
+            for number, highlight_type in number_dict.items():
+                if not number:
                     continue
-                found_instances = page.search_for(uan)
+                found_instances = page.search_for(number)
                 if found_instances:
                     for rect in found_instances:
                         expanded_rect = fitz.Rect(
@@ -248,7 +274,9 @@ def upload_files():
 def process_files():
     data = request.form
     job_id = data.get('job_id')
+    highlight_type = data.get('highlight_type')
     uan_column = data.get('uan_column')
+    esic_column = data.get('esic_column')
     site_column = data.get('site_column')
     highlight_mode = data.get('highlight_mode', 'border')
     color = data.get('color', 'red')
@@ -284,7 +312,9 @@ def process_files():
             excel_path=excel_path,
             pdf_path=pdf_path,
             output_dir=output_folder,
+            highlight_type=highlight_type,
             uan_column=uan_column,
+            esic_column=esic_column,
             site_column=site_column,
             border_color=parse_color(color),
             highlight_mode=highlight_mode,
