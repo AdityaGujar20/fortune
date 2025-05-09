@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Agreement Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+        .page-container {
+            max-height: 100vh;
+            overflow-y: auto;
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        }
+        .header {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        .expiring-soon-card {
+            background: linear-gradient(145deg, #ff6b6b 0%, #f43f5e 100%);
+            color: white;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .expiring-soon-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(244, 63, 94, 0.3);
+        }
+        .link-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .link-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container px-6 py-8">
+        <!-- Header -->
+        <div class="header flex justify-between items-center mb-8 px-6 py-4 rounded-lg">
+            <h1 class="text-3xl font-bold text-gray-800">Agreement Tracker Dashboard</h1>
+            <div class="space-x-3">
+                <a href="{{ url_for('upload') }}" class="bg-blue-600 text-white py-2 px-5 rounded-lg hover:bg-blue-700 transition duration-200">Upload Agreement</a>
+                <a href="{{ url_for('logout') }}" class="bg-gray-600 text-white py-2 px-5 rounded-lg hover:bg-gray-700 transition duration-200">Logout</a>
+            </div>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    {% set bg_color = 'bg-red-500' if category == 'error' else 'bg-blue-500' if category == 'info' else 'bg-green-500' %}
+                    <div class="mb-6 p-4 rounded-lg text-center text-white {{ bg_color }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Expiring Soon -->
+        <div class="mb-10">
+            <div class="expiring-soon-card p-8 rounded-xl shadow-lg text-center">
+                <h2 class="text-xl font-semibold mb-4">Expiring Soon (Next 60 Days)</h2>
+                <p class="text-4xl font-bold">{{ viz_data.expiring_soon }}</p>
+            </div>
+        </div>
+
+        <!-- Navigation Links -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <a href="{{ url_for('expiring_agreements') }}" class="link-card bg-white p-6 rounded-xl shadow-lg text-center">
+                <h2 class="text-lg font-semibold text-gray-800">View Agreements Expiring Soon</h2>
+                <p class="text-gray-600 mt-2">See agreements expiring in the next 60 days</p>
+            </a>
+            <a href="{{ url_for('all_agreements') }}" class="link-card bg-white p-6 rounded-xl shadow-lg text-center">
+                <h2 class="text-lg font-semibold text-gray-800">View All Agreements</h2>
+                <p class="text-gray-600 mt-2">See all your agreements</p>
+            </a>
+        </div>
+    </div>
+</body>
+</html>
