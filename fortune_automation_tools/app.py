@@ -1,4 +1,5 @@
 import os
+import sys
 import pandas as pd
 import fitz  # PyMuPDF
 import pdfplumber
@@ -12,17 +13,41 @@ import zipfile
 import threading
 from functools import wraps
 
-app = Flask(__name__)
+# Helper function to get the correct path for bundled resources
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    if hasattr(sys, '_MEIPASS'):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+# Helper function to get the base path for outputs folder (where .exe is located)
+def get_output_base_path():
+    """Get the directory where the .exe is running, for outputs/logs/uploads"""
+    if getattr(sys, 'frozen', False):
+        # When running as a PyInstaller .exe, use the directory of the executable
+        return os.path.dirname(sys.executable)
+    else:
+        # When running as a Python script, use the current working directory
+        return os.path.abspath(".")
+
+# Initialize Flask app with dynamic template and static folder paths
+app = Flask(__name__, 
+            template_folder=resource_path('templates'), 
+            static_folder=resource_path('static'))
 app.secret_key = 'your-secret-key-here'  # Replace with a secure key in production
 
 # Configure upload folder and allowed extensions
 UPLOAD_FOLDER = 'uploads'
-OUTPUT_FOLDER = 'Outputs'
+OUTPUT_FOLDER = 'outputs'
 LOG_FOLDER = 'logs'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-os.makedirs(LOG_FOLDER, exist_ok=True)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# Use get_output_base_path to ensure folders are created in the correct location
+BASE_PATH = get_output_base_path()
+os.makedirs(os.path.join(BASE_PATH, UPLOAD_FOLDER), exist_ok=True)
+os.makedirs(os.path.join(BASE_PATH, OUTPUT_FOLDER), exist_ok=True)
+os.makedirs(os.path.join(BASE_PATH, LOG_FOLDER), exist_ok=True)
+app.config['UPLOAD_FOLDER'] = os.path.join(BASE_PATH, UPLOAD_FOLDER)
 ALLOWED_EXTENSIONS = {'xlsx', 'pdf'}
 
 # Global variables to track job progress and PF mismatch data
@@ -40,7 +65,7 @@ def allowed_file(filename, extensions):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in extensions
 
 # Set up logging
-def setup_logging(log_dir=LOG_FOLDER):
+def setup_logging(log_dir=os.path.join(BASE_PATH, LOG_FOLDER)):
     os.makedirs(log_dir, exist_ok=True)
     log_file = os.path.join(log_dir, f"highlight_process_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
     logging.basicConfig(
@@ -314,7 +339,7 @@ def upload_files():
     pdf_filename = secure_filename(pdf_file.filename)
     
     job_folder = os.path.join(app.config['UPLOAD_FOLDER'], job_id)
-    output_folder = os.path.join(OUTPUT_FOLDER, job_id)
+    output_folder = os.path.join(BASE_PATH, OUTPUT_FOLDER, job_id)
     os.makedirs(job_folder, exist_ok=True)
     os.makedirs(output_folder, exist_ok=True)
     
@@ -346,7 +371,7 @@ def process_files():
     opacity = float(data.get('opacity', '0.25'))
     
     job_folder = os.path.join(app.config['UPLOAD_FOLDER'], job_id)
-    output_folder = os.path.join(OUTPUT_FOLDER, job_id)
+    output_folder = os.path.join(BASE_PATH, OUTPUT_FOLDER, job_id)
     
     excel_path = next((os.path.join(job_folder, f) for f in os.listdir(job_folder) if f.endswith('.xlsx')), None)
     pdf_path = next((os.path.join(job_folder, f) for f in os.listdir(job_folder) if f.endswith('.pdf')), None)
@@ -406,7 +431,7 @@ def pf_upload():
     output_filename = f"{base_filename}_name_mismatch.xlsx"
     
     job_folder = os.path.join(app.config['UPLOAD_FOLDER'], job_id)
-    output_folder = os.path.join(OUTPUT_FOLDER, job_id)
+    output_folder = os.path.join(BASE_PATH, OUTPUT_FOLDER, job_id)
     os.makedirs(job_folder, exist_ok=True)
     os.makedirs(output_folder, exist_ok=True)
     
@@ -462,34 +487,57 @@ def pf_upload():
         })
     
     except Exception as e:
+        logger = setup_logging()
+        logger.error(f"Error in pf_upload: {str(e)}")
         return jsonify({'status': 'error', 'message': f'Error processing PDF: {str(e)}'})
 
 @app.route('/pf_download/<job_id>')
 @login_required
 def pf_download(job_id):
-    if job_id not in pf_output_files:
-        return jsonify({'status': 'error', 'message': 'No file available for download'})
-    
-    output_folder = os.path.join(OUTPUT_FOLDER, job_id)
-    filename = pf_output_files[job_id]
-    filepath = os.path.join(output_folder, filename)
-    
-    return send_file(filepath, as_attachment=True, download_name=filename)
+    logger = setup_logging()
+    try:
+        if job_id not in pf_output_files:
+            logger.error(f"No output file found for job_id: {job_id}")
+            return jsonify({'status': 'error', 'message': 'No file available for download'})
+        
+        output_folder = os.path.join(BASE_PATH, OUTPUT_FOLDER, job_id)
+        filename = pf_output_files.get(job_id)
+        if not filename:
+            logger.error(f"Filename not found in pf_output_files for job_id: {job_id}")
+            return jsonify({'status': 'error', 'message': 'No file available for download'})
+        
+        filepath = os.path.join(output_folder, filename)
+        if not os.path.exists(filepath):
+            logger.error(f"File does not exist: {filepath}")
+            return jsonify({'status': 'error', 'message': f'File not found: {filename}'})
+        
+        logger.info(f"Serving file: {filepath}")
+        return send_file(filepath, as_attachment=True, download_name=filename)
+    except Exception as e:
+        logger.error(f"Error in pf_download for job_id {job_id}: {str(e)}")
+        return jsonify({'status': 'error', 'message': f'Error downloading file: {str(e)}'})
 
 @app.route('/pf_refresh/<job_id>', methods=['POST'])
 @login_required
 def pf_refresh(job_id):
-    job_folder = os.path.join(app.config['UPLOAD_FOLDER'], job_id)
-    output_folder = os.path.join(OUTPUT_FOLDER, job_id)
-    
-    for folder in [job_folder, output_folder]:
-        if os.path.exists(folder):
-            shutil.rmtree(folder)
-    
-    pf_mismatched_data.pop(job_id, None)
-    pf_output_files.pop(job_id, None)
-    
-    return jsonify({'status': 'cleaned'})
+    logger = setup_logging()
+    try:
+        job_folder = os.path.join(app.config['UPLOAD_FOLDER'], job_id)
+        output_folder = os.path.join(BASE_PATH, OUTPUT_FOLDER, job_id)
+        
+        for folder in [job_folder, output_folder]:
+            if os.path.exists(folder):
+                shutil.rmtree(folder)
+                logger.info(f"Deleted folder: {folder}")
+        
+        pf_mismatched_data.pop(job_id, None)
+        pf_output_files.pop(job_id, None)
+        
+        logger.info(f"Cleaned up job_id: {job_id}")
+        return jsonify({'status': 'cleaned'})
+    except Exception as e:
+        logger.error(f"Error in pf_refresh for job_id {job_id}: {str(e)}")
+        return jsonify({'status': 'error', 'message': f'Error cleaning up: {str(e)}'})
 
 @app.route('/progress/<job_id>')
 @login_required
@@ -501,51 +549,104 @@ def get_progress(job_id):
 @app.route('/results/<job_id>')
 @login_required
 def get_results(job_id):
-    output_folder = os.path.join(OUTPUT_FOLDER, job_id)
-    if not os.path.exists(output_folder):
-        return jsonify({'status': 'error', 'message': 'No results found'})
-    
-    files = [f for f in os.listdir(output_folder) if f.endswith('.pdf')]
-    return jsonify({'status': 'completed', 'files': files})
+    logger = setup_logging()
+    try:
+        output_folder = os.path.join(BASE_PATH, OUTPUT_FOLDER, job_id)
+        if not os.path.exists(output_folder):
+            logger.error(f"Output folder does not exist: {output_folder}")
+            return jsonify({'status': 'error', 'message': 'No results found'})
+        
+        files = [f for f in os.listdir(output_folder) if f.endswith('.pdf')]
+        logger.info(f"Found {len(files)} PDF files for job_id: {job_id}")
+        return jsonify({'status': 'completed', 'files': files})
+    except Exception as e:
+        logger.error(f"Error in get_results for job_id {job_id}: {str(e)}")
+        return jsonify({'status': 'error', 'message': f'Error retrieving results: {str(e)}'})
 
 @app.route('/download/<job_id>/<filename>')
 @login_required
 def download_file(job_id, filename):
-    output_folder = os.path.join(OUTPUT_FOLDER, job_id)
-    return send_from_directory(output_folder, filename, as_attachment=True)
+    logger = setup_logging()
+    try:
+        output_folder = os.path.join(BASE_PATH, OUTPUT_FOLDER, job_id)
+        filepath = os.path.join(output_folder, filename)
+        
+        if not os.path.exists(filepath):
+            logger.error(f"File does not exist: {filepath}")
+            return jsonify({'status': 'error', 'message': f'File not found: {filename}'})
+        
+        logger.info(f"Serving file: {filepath}")
+        return send_file(filepath, as_attachment=True, download_name=filename)
+    except Exception as e:
+        logger.error(f"Error in download_file for job_id {job_id}, filename {filename}: {str(e)}")
+        return jsonify({'status': 'error', 'message': f'Error downloading file: {str(e)}'})
 
 @app.route('/download_zip/<job_id>')
 @login_required
 def download_zip(job_id):
-    output_folder = os.path.join(OUTPUT_FOLDER, job_id)
-    zip_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.zip")
-    
-    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for root, _, files in os.walk(output_folder):
-            for file in files:
-                if file.endswith('.pdf'):
-                    zipf.write(os.path.join(root, file), file)
-    
-    return send_file(zip_path, as_attachment=True, download_name=f"highlighted_pdfs_{job_id}.zip")
+    logger = setup_logging()
+    try:
+        output_folder = os.path.join(BASE_PATH, OUTPUT_FOLDER, job_id)
+        zip_path = os.path.join(BASE_PATH, OUTPUT_FOLDER, f"{job_id}.zip")
+        
+        if not os.path.exists(output_folder):
+            logger.error(f"Output folder does not exist: {output_folder}")
+            return jsonify({'status': 'error', 'message': 'No files available for download'})
+        
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, _, files in os.walk(output_folder):
+                for file in files:
+                    if file.endswith('.pdf'):
+                        file_path = os.path.join(root, file)
+                        zipf.write(file_path, os.path.relpath(file_path, output_folder))
+                        logger.info(f"Added to ZIP: {file_path}")
+        
+        if not os.path.exists(zip_path):
+            logger.error(f"ZIP file was not created: {zip_path}")
+            return jsonify({'status': 'error', 'message': 'Failed to create ZIP file'})
+        
+        logger.info(f"Serving ZIP file: {zip_path}")
+        return send_file(zip_path, as_attachment=True, download_name=f"highlighted_pdfs_{job_id}.zip")
+    except Exception as e:
+        logger.error(f"Error in download_zip for job_id {job_id}: {str(e)}")
+        return jsonify({'status': 'error', 'message': f'Error creating ZIP file: {str(e)}'})
+    finally:
+        if os.path.exists(zip_path):
+            try:
+                os.remove(zip_path)
+                logger.info(f"Deleted temporary ZIP file: {zip_path}")
+            except Exception as e:
+                logger.error(f"Error deleting temporary ZIP file {zip_path}: {str(e)}")
 
 @app.route('/cleanup/<job_id>')
 @login_required
 def cleanup(job_id):
-    job_folder = os.path.join(app.config['UPLOAD_FOLDER'], job_id)
-    output_folder = os.path.join(OUTPUT_FOLDER, job_id)
-    zip_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.zip")
-    
-    for folder in [job_folder, output_folder]:
-        if os.path.exists(folder):
-            shutil.rmtree(folder)
-    
-    if os.path.exists(zip_path):
-        os.remove(zip_path)
-    
-    job_progress.pop(job_id, None)
-    job_status.pop(job_id, None)
-    
-    return jsonify({'status': 'cleaned'})
+    logger = setup_logging()
+    try:
+        job_folder = os.path.join(app.config['UPLOAD_FOLDER'], job_id)
+        output_folder = os.path.join(BASE_PATH, OUTPUT_FOLDER, job_id)
+        zip_path = os.path.join(BASE_PATH, OUTPUT_FOLDER, f"{job_id}.zip")
+        
+        for folder in [job_folder, output_folder]:
+            if os.path.exists(folder):
+                shutil.rmtree(folder)
+                logger.info(f"Deleted folder: {folder}")
+        
+        if os.path.exists(zip_path):
+            os.remove(zip_path)
+            logger.info(f"Deleted ZIP file: {zip_path}")
+        
+        job_progress.pop(job_id, None)
+        job_status.pop(job_id, None)
+        
+        logger.info(f"Cleaned up job_id: {job_id}")
+        return jsonify({'status': 'cleaned'})
+    except Exception as e:
+        logger.error(f"Error in cleanup for job_id {job_id}: {str(e)}")
+        return jsonify({'status': 'error', 'message': f'Error cleaning up: {str(e)}'})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Automatically open the browser when running the app
+    import webbrowser
+    webbrowser.open('http://localhost:5000')
+    app.run(host='0.0.0.0', port=5000, debug=False)
