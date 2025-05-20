@@ -1,0 +1,225 @@
+/* General Styles */
+body {
+    background-color: #f8f9fa;
+    font-family: 'Roboto', sans-serif;
+}
+
+/* Navbar Customizations */
+.navbar {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 10px 20px;
+}
+
+.navbar-brand img {
+    transition: transform 0.3s ease;
+}
+
+.navbar-brand img:hover {
+    transform: scale(1.1);
+}
+
+.navbar-brand.mx-auto {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* Container Padding */
+.container {
+    padding: 30px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Headings */
+h2 {
+    color: #343a40;
+    font-weight: 600;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+}
+
+/* Form Styles */
+form {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+}
+
+form div {
+    margin-bottom: 15px;
+}
+
+form label {
+    font-weight: 500;
+    color: #495057;
+}
+
+form input[type="text"],
+form input[type="email"],
+form input[type="date"],
+form input[type="file"],
+form select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+form input[type="text"]:focus,
+form input[type="email"]:focus,
+form input[type="date"]:focus,
+form input[type="file"]:focus,
+form select:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+}
+
+form button[type="submit"] {
+    background-color: #007bff;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: background-color 0.3s ease;
+}
+
+form button[type="submit"]:hover {
+    background-color: #0056b3;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.action-buttons .btn {
+    padding: 5px;
+    font-size: 0.9rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.action-buttons .btn i {
+    font-size: 1rem;
+}
+
+.action-buttons .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.action-buttons .btn-renew { color: #007bff; border-color: #007bff; }
+.action-buttons .btn-history { color: #17a2b8; border-color: #17a2b8; }
+.action-buttons .btn-remove { color: #dc3545; border-color: #dc3545; }
+.action-buttons .btn-terminate { color: #ffc107; border-color: #ffc107; }
+.action-buttons .btn-email { color: #28a745; border-color: #28a745; }
+
+.action-buttons .btn-renew:hover { background-color: #007bff; color: #fff; }
+.action-buttons .btn-history:hover { background-color: #17a2b8; color: #fff; }
+.action-buttons .btn-remove:hover { background-color: #dc3545; color: #fff; }
+.action-buttons .btn-terminate:hover { background-color: #ffc107; color: #fff; }
+.action-buttons .btn-email:hover { background-color: #28a745; color: #fff; }
+
+/* Tables */
+.table {
+    background-color: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.table th {
+    background-color: #007bff;
+    color: #ffffff;
+    font-weight: 600;
+    padding: 12px;
+}
+
+.table td {
+    padding: 12px;
+    vertical-align: middle;
+}
+
+.table tbody tr:hover {
+    background-color: #f1f3f5;
+}
+
+/* Alerts */
+.alert {
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+/* Dashboard Charts */
+.chart-container {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+}
+
+.chart-container img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Filters and Summary */
+.mb-3 {
+    background-color: #ffffff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.mb-3 label {
+    margin-right: 10px;
+    font-weight: 500;
+}
+
+.mb-3 select {
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding: 20px 10px;
+    }
+
+    .navbar-brand.mx-auto {
+        font-size: 1.2rem;
+    }
+
+    .table {
+        font-size: 0.875rem;
+    }
+
+    .table th, .table td {
+        padding: 8px;
+    }
+
+    .action-buttons .btn {
+        padding: 4px;
+        font-size: 0.8rem;
+    }
+
+    .action-buttons .btn i {
+        font-size: 0.9rem;
+    }
+
+    form {
+        padding: 15px;
+    }
+}

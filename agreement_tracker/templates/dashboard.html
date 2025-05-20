@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Dashboard</h2>
+    {% if no_agreements %}
+        <div class="alert alert-info" role="alert">
+            No agreements found. Please upload an agreement to see the dashboard charts.
+        </div>
+    {% else %}
+        <div class="row">
+            <div class="col-md-4">
+                <div class="chart-container">
+                    <h3 class="text-center">Status Distribution</h3>
+                    <img src="data:image/png;base64,{{ pie_chart }}" alt="Pie Chart">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="chart-container">
+                    <h3 class="text-center">Expiring Agreements</h3>
+                    <img src="data:image/png;base64,{{ bar_chart }}" alt="Bar Chart">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="chart-container">
+                    <h3 class="text-center">Days Remaining Distribution</h3>
+                    <img src="data:image/png;base64,{{ histogram }}" alt="Histogram">
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

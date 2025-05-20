@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+
+{% block title %}Expiring Agreements{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Expiring Active Agreements (Within 60 Days)</h2>
+
+    <!-- Summary of Counts -->
+    <div class="mb-3">
+        <h4>Summary</h4>
+        <p>0-10 Days: {{ counts['0-10'] }} agreements</p>
+        <p>11-30 Days: {{ counts['11-30'] }} agreements</p>
+        <p>31-60 Days: {{ counts['31-60'] }} agreements</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="mb-3 d-flex align-items-center flex-wrap">
+        <div class="me-3 mb-2">
+            <label for="rangeFilter" class="me-2">Filter by Days Remaining:</label>
+            <select id="rangeFilter" onchange="updateUrl('range', this.value)">
+                <option value="all" {% if range == 'all' %}selected{% endif %}>All</option>
+                <option value="0-10" {% if range == '0-10' %}selected{% endif %}>0-10 Days</option>
+                <option value="11-30" {% if range == '11-30' %}selected{% endif %}>11-30 Days</option>
+                <option value="31-60" {% if range == '31-60' %}selected{% endif %}>31-60 Days</option>
+            </select>
+        </div>
+        <!-- Download Button -->
+        <a href="{{ url_for('download_expiring_excel', range=range, status='Active') }}" class="btn btn-success mb-2">Download Excel</a>
+    </div>
+
+    {% if agreements %}
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Company</th>
+                        <th>Person</th>
+                        <th>2nd Person</th>
+                        <th>Designation</th>
+                        <th>Contact</th>
+                        <th>Email</th>
+                        <th>2nd Email</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Days Remaining</th>
+                        <th>Status</th>
+                        <th>File</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for agreement in agreements %}
+                        {% if agreement.status == 'Active' %}
+                        <tr>
+                            <td>{{ agreement.id }}</td>
+                            <td>{{ agreement.company_name }}</td>
+                            <td>{{ agreement.person_name }}</td>
+                            <td>{{ agreement.second_person_name or 'N/A' }}</td>
+                            <td>{{ agreement.designation }}</td>
+                            <td>{{ agreement.contact_number or 'N/A' }}</td>
+                            <td>{{ agreement.email_id or 'N/A' }}</td>
+                            <td>{{ agreement.second_email_id or 'N/A' }}</td>
+                            <td>{{ agreement.start_date }}</td>
+                            <td>{{ agreement.end_date }}</td>
+                            <td>{{ agreement.days_remaining }}</td>
+                            <td>{{ agreement.status }}</td>
+                            <td>
+                                <a href="{{ url_for('view_file', filename=agreement.filename) }}" target="_blank">View</a> |
+                                <a href="{{ url_for('download_file', filename=agreement.filename) }}">Download</a>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a href="{{ url_for('renew_agreement', agreement_id=agreement.id) }}" 
+                                       class="btn btn-outline-secondary btn-renew" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="Renew">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </a>
+                                    <a href="{{ url_for('agreement_history', agreement_id=agreement.id) }}" 
+                                       class="btn btn-outline-secondary btn-history" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="History">
+                                        <i class="bi bi-clock-history"></i>
+                                    </a>
+                                    <a href="{{ url_for('remove_agreement', agreement_id=agreement.id) }}" 
+                                       class="btn btn-outline-secondary btn-remove" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="Remove" 
+                                       onclick="return confirm('Are you sure you want to remove this agreement?');">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                    <a href="{{ url_for('terminate_agreement', agreement_id=agreement.id) }}" 
+                                       class="btn btn-outline-secondary btn-terminate" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="Terminate" 
+                                       onclick="return confirm('Are you sure you want to terminate this agreement?');">
+                                        <i class="bi bi-x-circle"></i>
+                                    </a>
+                                    <a href="{{ url_for('send_email', agreement_id=agreement.id) }}" 
+                                       class="btn btn-outline-secondary btn-email" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="Send Email">
+                                        <i class="bi bi-envelope"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            No active agreements expiring within the selected range.
+        </div>
+    {% endif %}
+</div>
+
+<script>
+function updateUrl(param, value) {
+    const url = new URL(window.location);
+    url.searchParams.set(param, value);
+    // Always ensure we're filtering by active status
+    url.searchParams.set('status', 'Active');
+    window.location.href = url.toString();
+}
+
+// Function to initialize tooltips
+function initializeTooltips() {
+    if (typeof bootstrap === 'undefined') {
+        console.error('Bootstrap JavaScript is not loaded. Tooltips will not work.');
+        return;
+    }
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(tooltipTriggerEl => {
+        new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+}
+
+// Wait for the DOM to load and ensure Bootstrap is available
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof bootstrap !== 'undefined') {
+        initializeTooltips();
+    } else {
+        const bootstrapScript = document.querySelector('script[src*="bootstrap.bundle.min.js"]');
+        if (bootstrapScript) {
+            bootstrapScript.addEventListener('load', initializeTooltips);
+        } else {
+            console.error('Bootstrap script not found. Tooltips will not work.');
+        }
+    }
+});
+</script>
+{% endblock %}

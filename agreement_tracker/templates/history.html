@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Agreement History{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Agreement History</h2>
+    {% if chain %}
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Company</th>
+                        <th>Person</th>
+                        <th>2nd Person</th>
+                        <th>Designation</th>
+                        <th>Contact</th>
+                        <th>Email</th>
+                        <th>2nd Email</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Status</th>
+                        <th>File</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for agreement in chain %}
+                        <tr>
+                            <td>{{ agreement.id }}</td>
+                            <td>{{ agreement.company_name }}</td>
+                            <td>{{ agreement.person_name }}</td>
+                            <td>{{ agreement.second_person_name or 'N/A' }}</td>
+                            <td>{{ agreement.designation }}</td>
+                            <td>{{ agreement.contact_number or 'N/A' }}</td>
+                            <td>{{ agreement.email_id or 'N/A' }}</td>
+                            <td>{{ agreement.second_email_id or 'N/A' }}</td>
+                            <td>{{ agreement.start_date }}</td>
+                            <td>{{ agreement.end_date }}</td>
+                            <td>{{ agreement.status }}</td>
+                            <td>
+                                <a href="{{ url_for('view_file', filename=agreement.filename) }}" target="_blank">View</a> |
+                                <a href="{{ url_for('download_file', filename=agreement.filename) }}">Download</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="text-center">
+            <a href="{{ url_for('view_agreements') }}" class="btn btn-primary">Back to Agreements</a>
+        </div>
+    {% else %}
+        <div class="alert alert-warning" role="alert">
+            No history found for this agreement.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

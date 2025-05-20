@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block title %}View Agreements{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>View Agreements</h2>
+
+    <!-- Status Filter -->
+    <div class="mb-3 d-flex align-items-center">
+        <label for="statusFilter" class="me-2">Filter by Status:</label>
+        <select id="statusFilter" onchange="window.location.href='{{ url_for('view_agreements') }}?status=' + this.value">
+            <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
+            <option value="Active" {% if status == 'Active' %}selected{% endif %}>Active</option>
+            <option value="Expired" {% if status == 'Expired' %}selected{% endif %}>Expired</option>
+            <option value="Renewed" {% if status == 'Renewed' %}selected{% endif %}>Renewed</option>
+        </select>
+        <!-- Download Button -->
+        <a href="{{ url_for('download_excel', status=status) }}" class="btn btn-success ms-3">Download Excel</a>
+    </div>
+
+    {% if agreements %}
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Company</th>
+                        <th>Person</th>
+                        <th>2nd Person</th>
+                        <th>Designation</th>
+                        <th>Contact</th>
+                        <th>Email</th>
+                        <th>2nd Email</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Days Remaining</th>
+                        <th>Status</th>
+                        <th>File</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for agreement in agreements %}
+                        <tr>
+                            <td>{{ agreement.id }}</td>
+                            <td>{{ agreement.company_name }}</td>
+                            <td>{{ agreement.person_name }}</td>
+                            <td>{{ agreement.second_person_name or 'N/A' }}</td>
+                            <td>{{ agreement.designation }}</td>
+                            <td>{{ agreement.contact_number or 'N/A' }}</td>
+                            <td>{{ agreement.email_id or 'N/A' }}</td>
+                            <td>{{ agreement.second_email_id or 'N/A' }}</td>
+                            <td>{{ agreement.start_date }}</td>
+                            <td>{{ agreement.end_date }}</td>
+                            <td>
+                                {% if agreement.days_remaining is not none %}
+                                    {{ agreement.days_remaining }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>{{ agreement.status }}</td>
+                            <td>
+                                <a href="{{ url_for('view_file', filename=agreement.filename) }}" target="_blank">View</a> |
+                                <a href="{{ url_for('download_file', filename=agreement.filename) }}">Download</a>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a href="{{ url_for('renew_agreement', agreement_id=agreement.id) }}" 
+                                       class="btn btn-outline-secondary btn-renew" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="Renew">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </a>
+                                    <a href="{{ url_for('agreement_history', agreement_id=agreement.id) }}" 
+                                       class="btn btn-outline-secondary btn-history" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="History">
+                                        <i class="bi bi-clock-history"></i>
+                                    </a>
+                                    <a href="{{ url_for('remove_agreement', agreement_id=agreement.id) }}" 
+                                       class="btn btn-outline-secondary btn-remove" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="Remove" 
+                                       onclick="return confirm('Are you sure you want to remove this agreement?');">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                    <a href="{{ url_for('terminate_agreement', agreement_id=agreement.id) }}" 
+                                       class="btn btn-outline-secondary btn-terminate" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="Terminate" 
+                                       onclick="return confirm('Are you sure you want to terminate this agreement?');">
+                                        <i class="bi bi-x-circle"></i>
+                                    </a>
+                                    <a href="{{ url_for('send_email', agreement_id=agreement.id) }}" 
+                                       class="btn btn-outline-secondary btn-email" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="Send Email">
+                                        <i class="bi bi-envelope"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            No agreements found.
+        </div>
+    {% endif %}
+</div>
+
+<script>
+// Enable tooltips
+document.addEventListener('DOMContentLoaded', function () {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

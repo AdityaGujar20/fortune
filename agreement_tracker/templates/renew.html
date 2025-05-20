@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Renew Agreement{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Renew Agreement</h2>
+    <form action="{{ url_for('renew_agreement', agreement_id=agreement.id) }}" method="post" enctype="multipart/form-data">
+        <div>
+            <label for="company_name">Company Name:</label>
+            <input type="text" id="company_name" name="company_name" value="{{ agreement.company_name }}" readonly>
+        </div>
+        <div>
+            <label for="person_name">Person Name:</label>
+            <input type="text" id="person_name" name="person_name" value="{{ agreement.person_name }}" required>
+        </div>
+        <div>
+            <label for="second_person_name">2nd Person Name (Optional):</label>
+            <input type="text" id="second_person_name" name="second_person_name" value="{{ agreement.second_person_name or '' }}">
+        </div>
+        <div>
+            <label for="designation">Designation:</label>
+            <input type="text" id="designation" name="designation" value="{{ agreement.designation }}" required>
+        </div>
+        <div>
+            <label for="contact_number">Contact Number (Optional):</label>
+            <input type="text" id="contact_number" name="contact_number" value="{{ agreement.contact_number or '' }}">
+        </div>
+        <div>
+            <label for="email_id">Email ID (Optional):</label>
+            <input type="email" id="email_id" name="email_id" value="{{ agreement.email_id or '' }}">
+        </div>
+        <div>
+            <label for="second_email_id">2nd Email ID (Optional):</label>
+            <input type="email" id="second_email_id" name="second_email_id" value="{{ agreement.second_email_id or '' }}">
+        </div>
+        <div>
+            <label for="start_date">Start Date:</label>
+            <input type="date" id="start_date" name="start_date" required>
+        </div>
+        <div>
+            <label for="end_date">End Date:</label>
+            <input type="date" id="end_date" name="end_date" required>
+        </div>
+        <div>
+            <label for="document">Upload New Document:</label>
+            <input type="file" id="document" name="document" accept=".pdf" required>
+        </div>
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary">Renew Agreement</button>
+            <a href="{{ url_for('view_agreements') }}" class="btn btn-secondary ms-2">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

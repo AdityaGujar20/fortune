@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block title %}Select Email{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Select Email Address to Send Reminder</h2>
+    <p>Agreement ID: {{ agreement.id }} | Company: {{ agreement.company_name }}</p>
+    <form method="post" action="{{ url_for('select_email', agreement_id=agreement.id) }}">
+        <div class="mb-3">
+            <label for="selected_email" class="form-label">Select Email:</label>
+            <select id="selected_email" name="selected_email" class="form-select" required>
+                <option value="" disabled selected>Select an email address</option>
+                {% for email in emails %}
+                    <option value="{{ email }}">{{ email }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary">Send Email</button>
+            <a href="{{ url_for('view_agreements') }}" class="btn btn-secondary ms-2">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
